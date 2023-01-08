@@ -1,11 +1,11 @@
-﻿using FiniteAutomatonConverter.BaseEntities;
+﻿using FiniteAutomatonConverter.DomainEntities;
 
 namespace FiniteAutomatonConverter.Services.Contracts
 {
     public interface IAutomatonConverter
     {
-        Task<FiniteAutomaton> ConvertEpsilonNfaToNfa(FiniteAutomaton enfa);
-        Task<FiniteAutomaton> ConvertNfaToDfa(FiniteAutomaton nfa);
-        Task<FiniteAutomaton> MinimizeDfa(FiniteAutomaton dfa);
+        Task<Automaton> ConvertEpsilonNfaToNfa(Automaton enfa);
+        Task<Automaton> ConvertNfaToDfa(Automaton nfa);
+        Task<Automaton> MinimizeDfa(Automaton dfa);
     }
 }

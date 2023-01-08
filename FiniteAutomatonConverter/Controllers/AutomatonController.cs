@@ -11,16 +11,10 @@ namespace FiniteAutomatonConverter.Controllers
     [AllowAnonymous]
     public class AutomatonController : ControllerBase
     {
-        [HttpPost("aut")]
-        public async Task<IActionResult> postMe(AutomatonDto req)
+        [HttpGet("epsilonNfa")]
+        public async Task<IActionResult> VizualizeEpsilonNfaObject(AutomatonDto req)
         {
             return Ok(new AutomatonVizualizerDto(req));
-        }
-
-        [HttpPost("viz")]
-        public async Task<IActionResult> posthah(AutomatonVizualizerDto dto)
-        {
-            return Ok(dto);
         }
     }
 }

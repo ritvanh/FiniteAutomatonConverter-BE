@@ -6,10 +6,10 @@
         public string Initial { get; set; } 
 
         public Dictionary<string, StateVizualizerDto> States { get; set; }
-        public AutomatonVizualizerDto(AutomatonDto aut)
+        public AutomatonVizualizerDto(AutomatonDto aut,string type)
         {
-            this.Id = "NFA";
-            this.Initial = aut.States.FirstOrDefault(x => x.IsInitial).Value;
+            this.Id = type;
+            this.Initial = aut.InitialState;
             this.States = new Dictionary<string, StateVizualizerDto>();
 
             foreach(var s in aut.States)
