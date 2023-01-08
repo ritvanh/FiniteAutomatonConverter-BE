@@ -23,7 +23,7 @@ namespace FiniteAutomatonConverter.Services
                     //foreach transition of epsilon enclosure
                     enfa.States[state].ForEach(transition =>
                     {
-                        //add nfa transition for every epsilon closure of current transition of first epsilon enclosure
+                            //add nfa transition for every epsilon closure of current transition of first epsilon enclosure
                         if (transition.Key != Constants.Epsilon)
                         {
                             enfa.GetEpsilonClosureByStateValue(transition.Value)
@@ -35,8 +35,9 @@ namespace FiniteAutomatonConverter.Services
                         }
                     });
 
+
                 });
-                newTransitions.Add(state.Key, currentStateTransitionList);
+                newTransitions.Add(state.Key, currentStateTransitionList.Distinct().ToList());
             }
             enfa.States = newTransitions;
             return enfa;

@@ -1,4 +1,6 @@
-﻿namespace FiniteAutomatonConverter.DTOs.AutomatonVizualiserDTOs
+﻿using FiniteAutomatonConverter.DomainEntities;
+
+namespace FiniteAutomatonConverter.DTOs.AutomatonVizualiserDTOs
 {
     public class AutomatonVizualizerDto
     {
@@ -32,6 +34,28 @@
 
                 this.States.Add(s.Value, stateViz);
             }
+        }
+        public AutomatonVizualizerDto(Automaton automaton,string id)
+        {
+            Id = id;
+            Initial = automaton.InitialState;
+            var dict = new Dictionary<string, StateVizualizerDto>();
+            foreach(var state in automaton.States)
+            {
+                var tempStateDto = new StateVizualizerDto();
+                tempStateDto.Meta = automaton.FinalStates.Any(x => x == state.Key);
+                tempStateDto.On = new Dictionary<string, string>();
+                foreach(var transition in state.Value)
+                {
+                    var tempKey = transition.Key;
+                    while (tempStateDto.On.ContainsKey(tempKey))
+                        tempKey += " ";
+                    tempStateDto.On.Add(tempKey, transition.Value);
+                }
+                dict.Add(state.Key, tempStateDto);
+            }
+            States = dict;
+
         }
     }
 }

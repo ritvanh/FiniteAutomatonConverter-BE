@@ -1,7 +1,5 @@
-﻿using AutoMapper;
-using FiniteAutomatonConverter.DTOs;
+﻿using FiniteAutomatonConverter.DTOs;
 using FiniteAutomatonConverter.Models;
-using System.Linq;
 
 namespace FiniteAutomatonConverter.DomainEntities
 {
@@ -11,13 +9,30 @@ namespace FiniteAutomatonConverter.DomainEntities
         public List<string> Alphabet { get; set; }
         public Dictionary<string, List<KeyValuePair<string, string>>> States { get; set; }
         public List<string> FinalStates { get; set; }
+        public Automaton(AutomatonDto dto)
+        {
+            InitialState = dto.InitialState;
+            Alphabet = dto.Alphabet;
+            FinalStates = dto.States.Where(x => x.IsFinal).Select(x => x.Value).ToList();
+
+            var statesDict = new Dictionary<string, List<KeyValuePair<string, string>>>();
+
+            foreach(var state in dto.States)
+            {
+                var tempKvpList = new List<KeyValuePair<string, string>>();
+                foreach(var transition in dto.AllTransitions.Where(x => x.From == state.Value))
+                {
+                    tempKvpList.Add(new KeyValuePair<string, string>(transition.WithInput, transition.To));
+                }
+                statesDict.Add(state.Value, tempKvpList);
+            }
+            States = statesDict;
+        }
 
         public List<string> GetEpsilonClosureByStateValue(string stateValue)
         {
 
             var epsilonTransitions = GetStatesReachableByInput(stateValue, Constants.Epsilon);
-
-            epsilonTransitions.Add(stateValue);
 
             var epsilonReachableStates = new List<string>(epsilonTransitions);
             var epsilonReachableStatesProcessor = new Queue<string>(epsilonTransitions);
@@ -29,6 +44,7 @@ namespace FiniteAutomatonConverter.DomainEntities
                 epsilonReachableStates.AddRange(newEpsilonReachableStates);
                 newEpsilonReachableStates.ForEach(o => epsilonReachableStatesProcessor.Enqueue(o));
             }
+            epsilonReachableStates.Add(stateValue);
 
             return epsilonReachableStates;
         }
