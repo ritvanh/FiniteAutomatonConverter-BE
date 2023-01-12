@@ -23,5 +23,15 @@ namespace FiniteAutomatonConverter.Controllers
             var converted = await _automatonConverter.ConvertEpsilonNfaToNfa(new DomainEntities.Automaton(req));
             return Ok(new AutomatonVizualizerDto(converted,"nfa"));
         }
+
+        [HttpGet("try")]
+        public async Task<IActionResult> Try()
+        {
+            var a = new List<string>();
+            a.Add("a");
+            a.Add("b");
+            var str = string.Join(",", a);
+            return Ok(str);
+        }
     }
 }

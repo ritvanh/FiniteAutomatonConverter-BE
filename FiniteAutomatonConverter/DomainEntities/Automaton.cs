@@ -39,12 +39,22 @@ namespace FiniteAutomatonConverter.DomainEntities
 
             while (epsilonReachableStatesProcessor.Any())
             {
-                var newEpsilonReachableStates = GetStatesReachableByInput(epsilonReachableStatesProcessor.Dequeue(), Constants.Epsilon);
+                var currentState = epsilonReachableStatesProcessor.Dequeue();
 
-                epsilonReachableStates.AddRange(newEpsilonReachableStates);
-                newEpsilonReachableStates.ForEach(o => epsilonReachableStatesProcessor.Enqueue(o));
+                GetStatesReachableByInput(currentState, Constants.Epsilon).ForEach(x =>
+                {
+                    if(!(epsilonReachableStates.Contains(x) || x == stateValue))
+                    {
+                        epsilonReachableStates.Add(x);
+                        epsilonReachableStatesProcessor.Enqueue(x);
+                    }
+                });
+                
             }
             epsilonReachableStates.Add(stateValue);
+
+            if (epsilonReachableStates.Intersect(FinalStates).Any())
+                FinalStates.Add(stateValue);
 
             return epsilonReachableStates;
         }

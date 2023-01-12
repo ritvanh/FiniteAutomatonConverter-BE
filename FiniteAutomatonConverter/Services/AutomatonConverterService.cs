@@ -1,6 +1,4 @@
 ﻿using FiniteAutomatonConverter.DomainEntities;
-using FiniteAutomatonConverter.DTOs;
-using FiniteAutomatonConverter.DTOs.AutomatonVizualiserDTOs;
 using FiniteAutomatonConverter.Models;
 using FiniteAutomatonConverter.Services.Contracts;
 
@@ -9,7 +7,7 @@ namespace FiniteAutomatonConverter.Services
     public class AutomatonConverterService : IAutomatonConverter
     {
         public async Task<Automaton> ConvertEpsilonNfaToNfa(Automaton enfa)
-        {
+        {   
             var newTransitions = new Dictionary<string, List<KeyValuePair<string, string>>>();
             //foreach state
             foreach (var state in enfa.States)
@@ -43,8 +41,43 @@ namespace FiniteAutomatonConverter.Services
             return enfa;
         }
 
-        public Task<Automaton> ConvertNfaToDfa(Automaton nfa)
+        public async Task<Automaton> ConvertNfaToDfa(Automaton enfa)
         {
+            var nfa = await ConvertEpsilonNfaToNfa(enfa);
+            var newTransitions = new Dictionary<string, List<KeyValuePair<string, string>>>();
+            var newStates = new Queue<string[]>();
+            newStates.Enqueue(new string[] { enfa.InitialState });
+
+            while (newStates.Any())
+            {
+                var currentProcessingState = newStates.Dequeue();
+
+                var newInitialStateTransition = new List<KeyValuePair<string, string>>();
+                foreach (var state in currentProcessingState)
+                {
+                    var groupedInitialStateTransitions = nfa.States[nfa.InitialState]
+                    .GroupBy(x => x.Key)
+                    .ToDictionary(x => x.Key, x => x.Select(kvp => kvp.Value)
+                    .ToList());
+
+                    
+                    foreach (var x in groupedInitialStateTransitions)
+                    {
+                        if (x.Value.Count == 1)
+                        {
+                            newInitialStateTransition.Add(new KeyValuePair<string, string>(x.Key, x.Value[0]));
+                        }
+                        else
+                        {
+                            newStates.Enqueue(x.Value.ToArray());
+                            newInitialStateTransition.Add(new KeyValuePair<string, string>(x.Key, String.Join(",", x.Value)));
+                        }
+                    }
+                }
+                newTransitions.Add(nfa.InitialState, newInitialStateTransition);
+
+            }
+
             throw new NotImplementedException();
         }
 
