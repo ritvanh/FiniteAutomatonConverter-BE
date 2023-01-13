@@ -7,7 +7,7 @@ namespace FiniteAutomatonConverter.Services
     public class AutomatonConverterService : IAutomatonConverter
     {
         public async Task<Automaton> ConvertEpsilonNfaToNfa(Automaton enfa)
-        {   
+        {
             var newTransitions = new Dictionary<string, List<KeyValuePair<string, string>>>();
             //foreach state
             foreach (var state in enfa.States)
@@ -21,7 +21,7 @@ namespace FiniteAutomatonConverter.Services
                     //foreach transition of epsilon enclosure
                     enfa.States[state].ForEach(transition =>
                     {
-                            //add nfa transition for every epsilon closure of current transition of first epsilon enclosure
+                        //add nfa transition for every epsilon closure of current transition of first epsilon enclosure
                         if (transition.Key != Constants.Epsilon)
                         {
                             enfa.GetEpsilonClosureByStateValue(transition.Value)
@@ -44,42 +44,10 @@ namespace FiniteAutomatonConverter.Services
         public async Task<Automaton> ConvertNfaToDfa(Automaton enfa)
         {
 
-            //var newStates = new Queue<string[]>();
-            //newStates.Enqueue(new string[] { enfa.InitialState });
-
-            //while (newStates.Any())
-            //{
-            //    var currentProcessingState = newStates.Dequeue();
-
-            //    var newInitialStateTransition = new List<KeyValuePair<string, string>>();
-            //    foreach (var state in currentProcessingState)
-            //    {
-            //        var groupedInitialStateTransitions = nfa.States[nfa.InitialState]
-            //        .GroupBy(x => x.Key)
-            //        .ToDictionary(x => x.Key, x => x.Select(kvp => kvp.Value)
-            //        .ToList());
-
-
-            //        foreach (var x in groupedInitialStateTransitions)
-            //        {
-            //            if (x.Value.Count == 1)
-            //            {
-            //                newInitialStateTransition.Add(new KeyValuePair<string, string>(x.Key, x.Value[0]));
-            //            }
-            //            else
-            //            {
-            //                newStates.Enqueue(x.Value.ToArray());
-            //                newInitialStateTransition.Add(new KeyValuePair<string, string>(x.Key, String.Join(",", x.Value)));
-            //            }
-            //        }
-            //    }
-            //    newTransitions.Add(nfa.InitialState, newInitialStateTransition);
-
-            //}
             var nfa = await ConvertEpsilonNfaToNfa(enfa);
-            var newTransitions = new Dictionary<List<string>, List<KeyValuePair <string, List<string>>>>();
+            var newTransitions = new Dictionary<List<string>, List<KeyValuePair<string, List<string>>>>();
             var newStates = new List<List<string>>();
-            newStates.Add(new List<string>() { nfa.InitialState});
+            newStates.Add(new List<string>() { nfa.InitialState });
             var newStatesProcessor = new Queue<List<string>>();
             newStatesProcessor.Enqueue(new List<string>() { nfa.InitialState });
 
@@ -98,12 +66,12 @@ namespace FiniteAutomatonConverter.Services
                     .ToList());
 
                     //adding them to current state transitions
-                    foreach(var kvp in groupedTransitions)
+                    foreach (var kvp in groupedTransitions)
                     {
                         //if input already exists, add found states
                         if (currentStateTransitions.Any(x => x.Key == kvp.Key))
                         {
-                            currentStateTransitions.FirstOrDefault(x => x.Key == kvp.Key).Value.AddRange(kvp.Value);
+                            currentStateTransitions.FirstOrDefault(x => x.Key == kvp.Key).Value.AddRange(kvp.Value.Where(x=> !currentStateTransitions.FirstOrDefault(x => x.Key == kvp.Key).Value.Contains(x)));
                         }
                         //else add record for the newly found input
                         else
@@ -115,12 +83,43 @@ namespace FiniteAutomatonConverter.Services
                 //adding found transitions
                 newTransitions.Add(currentState, currentStateTransitions);
                 //adding states to process
-                var newStateLists = currentStateTransitions.Where(x => !newStates.Contains(x.Value)).Select(x=>x.Value).ToList();
-                newStates.AddRange(newStateLists);
-                newStateLists.ForEach(x => newStatesProcessor.Enqueue(x));
+                var newStateLists = currentStateTransitions.Where(x => !newStates.Contains(x.Value)).Select(x => x.Value).ToList();
+                newStateLists.ForEach(x =>
+                {
+                    if(!newStates.Any(y=> y.SequenceEqual(x)))
+                    {
+                        newStates.Add(x);
+                        newStatesProcessor.Enqueue(x);
+                    }
+                });
             }
 
+            var dfaStates = new List<string>();
+            var dfaFinalStates = new List<string>();
+            newStates.ForEach(x =>
+            {
+                dfaStates.Add(string.Join(",", x));
+                if (x.Intersect(nfa.FinalStates).Any())
+                    dfaFinalStates.Add(string.Join(",", x));
+            });
+            var dfaTransitions = new Dictionary<string, List<KeyValuePair<string, string>>>();
+            foreach(var state in newTransitions)
+            {
+                var currentTransitions = new List<KeyValuePair<string, string>>();
+                state.Value.ForEach(x =>
+                {
+                    currentTransitions.Add(new KeyValuePair<string,string>(x.Key, string.Join(",", x.Value)));
+                });
+                dfaTransitions.Add(string.Join(",", state.Key), currentTransitions);
+            }
 
+            return new Automaton()
+            {
+                Alphabet = nfa.Alphabet,
+                InitialState = nfa.InitialState,
+                FinalStates = dfaFinalStates,
+                States = dfaTransitions
+            };
 
         }
 

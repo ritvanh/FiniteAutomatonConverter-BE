@@ -28,6 +28,7 @@ namespace FiniteAutomatonConverter.DomainEntities
             }
             States = statesDict;
         }
+        public Automaton() { }
 
         public List<string> GetEpsilonClosureByStateValue(string stateValue)
         {

@@ -20,18 +20,9 @@ namespace FiniteAutomatonConverter.Controllers
         [HttpPost("epsilonNfa")]
         public async Task<IActionResult> VizualizeEpsilonNfaObject(AutomatonDto req)
         {
-            var converted = await _automatonConverter.ConvertEpsilonNfaToNfa(new DomainEntities.Automaton(req));
-            return Ok(new AutomatonVizualizerDto(converted,"nfa"));
+            var converted = await _automatonConverter.ConvertNfaToDfa(new DomainEntities.Automaton(req));
+            return Ok(new AutomatonVizualizerDto(converted,"dfa"));
         }
 
-        [HttpGet("try")]
-        public async Task<IActionResult> Try()
-        {
-            var a = new List<string>();
-            a.Add("a");
-            a.Add("b");
-            var str = string.Join(",", a);
-            return Ok(str);
-        }
     }
 }
