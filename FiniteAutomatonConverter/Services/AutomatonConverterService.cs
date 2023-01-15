@@ -71,7 +71,7 @@ namespace FiniteAutomatonConverter.Services
                         //if input already exists, add found states
                         if (currentStateTransitions.Any(x => x.Key == kvp.Key))
                         {
-                            currentStateTransitions.FirstOrDefault(x => x.Key == kvp.Key).Value.AddRange(kvp.Value.Where(x=> !currentStateTransitions.FirstOrDefault(x => x.Key == kvp.Key).Value.Contains(x)));
+                            currentStateTransitions.FirstOrDefault(x => x.Key == kvp.Key).Value.AddRange(kvp.Value.Where(x => !currentStateTransitions.FirstOrDefault(x => x.Key == kvp.Key).Value.Contains(x)));
                         }
                         //else add record for the newly found input
                         else
@@ -86,7 +86,7 @@ namespace FiniteAutomatonConverter.Services
                 var newStateLists = currentStateTransitions.Where(x => !newStates.Contains(x.Value)).Select(x => x.Value).ToList();
                 newStateLists.ForEach(x =>
                 {
-                    if(!newStates.Any(y=> y.SequenceEqual(x)))
+                    if (!newStates.Any(y => y.SequenceEqual(x)))
                     {
                         newStates.Add(x);
                         newStatesProcessor.Enqueue(x);
@@ -103,15 +103,31 @@ namespace FiniteAutomatonConverter.Services
                     dfaFinalStates.Add(string.Join(",", x));
             });
             var dfaTransitions = new Dictionary<string, List<KeyValuePair<string, string>>>();
-            foreach(var state in newTransitions)
+            foreach (var state in newTransitions)
             {
                 var currentTransitions = new List<KeyValuePair<string, string>>();
                 state.Value.ForEach(x =>
                 {
-                    currentTransitions.Add(new KeyValuePair<string,string>(x.Key, string.Join(",", x.Value)));
+                    currentTransitions.Add(new KeyValuePair<string, string>(x.Key, string.Join(",", x.Value)));
                 });
                 dfaTransitions.Add(string.Join(",", state.Key), currentTransitions);
             }
+            
+            foreach (var state in dfaTransitions)
+            {
+                var unusedCharacters = nfa.Alphabet.Where(x => state.Value.Where(y=>y.Key == x).Count() <1).ToList();
+                unusedCharacters.Remove(Constants.Epsilon);
+                unusedCharacters.ForEach(x =>
+                {
+                    state.Value.Add(new KeyValuePair<string, string>(x, "dead"));
+                });
+            }
+
+            var tr = new List<KeyValuePair<string, string>>();
+            var errAlphabet = nfa.Alphabet;
+            errAlphabet.Remove(Constants.Epsilon);
+            tr.Add(new KeyValuePair<string, string>(String.Join(",",errAlphabet), "dead"));
+            dfaTransitions.Add("dead",tr);
 
             return new Automaton()
             {
@@ -123,9 +139,20 @@ namespace FiniteAutomatonConverter.Services
 
         }
 
-        public Task<Automaton> MinimizeDfa(Automaton dfa)
+        public async Task<Automaton> MinimizeDfa(Automaton enfa)
         {
-            throw new NotImplementedException();
+            var dfa =await ConvertNfaToDfa(await ConvertEpsilonNfaToNfa(enfa));
+            var nonReachableStates = dfa.States.Select(x => x.Key).ToList();
+            dfa.GetStatesReachableByAnyInput(dfa.InitialState).ForEach(x => nonReachableStates.Remove(x));
+            nonReachableStates.ForEach(x =>
+            {
+                dfa.States.Remove(x);
+                if (dfa.FinalStates.Contains(x))
+                    dfa.FinalStates.Remove(x);
+            });
+            return new Automaton();
+
+
         }
 
     }

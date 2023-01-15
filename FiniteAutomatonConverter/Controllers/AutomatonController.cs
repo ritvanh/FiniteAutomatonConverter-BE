@@ -20,8 +20,14 @@ namespace FiniteAutomatonConverter.Controllers
         [HttpPost("epsilonNfa")]
         public async Task<IActionResult> VizualizeEpsilonNfaObject(AutomatonDto req)
         {
-            var converted = await _automatonConverter.ConvertNfaToDfa(new DomainEntities.Automaton(req));
-            return Ok(new AutomatonVizualizerDto(converted,"dfa"));
+            var automaton = new DomainEntities.Automaton(req);
+            var dto = new AutomatonVizualizerClusterDto();
+            dto.Enfa = new AutomatonVizualizerDto(automaton, "epsilonNfa");
+            dto.Nfa = new AutomatonVizualizerDto(await _automatonConverter.ConvertEpsilonNfaToNfa(automaton), "nfa");
+            dto.Dfa = new AutomatonVizualizerDto(await _automatonConverter.ConvertNfaToDfa(automaton), "dfa");
+            dto.MinimizedDfa = new AutomatonVizualizerDto(await _automatonConverter.ConvertNfaToDfa(automaton), "m-dfa");
+
+            return Ok(dto);
         }
 
     }

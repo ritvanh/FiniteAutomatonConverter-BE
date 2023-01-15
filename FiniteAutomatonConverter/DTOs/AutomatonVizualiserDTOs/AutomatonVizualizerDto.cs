@@ -50,6 +50,7 @@ namespace FiniteAutomatonConverter.DTOs.AutomatonVizualiserDTOs
                     var tempKey = transition.Key;
                     while (tempStateDto.On.ContainsKey(tempKey))
                         tempKey += " ";
+
                     tempStateDto.On.Add(tempKey, transition.Value);
                 }
                 dict.Add(state.Key, tempStateDto);

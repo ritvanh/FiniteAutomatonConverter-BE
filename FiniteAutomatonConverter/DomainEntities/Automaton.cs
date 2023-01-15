@@ -69,5 +69,26 @@ namespace FiniteAutomatonConverter.DomainEntities
                 .Select(x => x.Value)
                 .ToList();
         }
+        public List<string> GetStatesReachableByAnyInput(string stateValue)
+        {
+            var states = new List<string>();
+            var stateProcessor = new Queue<string>();
+            stateProcessor.Enqueue(stateValue);
+
+            while (stateProcessor.Any())
+            {
+                var currentState = stateProcessor.Dequeue();
+                this.States[currentState].ForEach(x =>
+                {
+                    if (!states.Contains(x.Value))
+                    {
+                        states.Add(x.Value);
+                        stateProcessor.Enqueue(x.Value);
+                    }
+                });
+            }
+
+            return states;
+        }
     }
 }
