@@ -41,8 +41,9 @@ namespace FiniteAutomatonConverter.Services
             return enfa;
         }
 
-        public async Task<Automaton> ConvertNfaToDfa(Automaton nfa)
+        public async Task<Automaton> ConvertNfaToDfa(Automaton enfa)
         {
+            var nfa = await ConvertEpsilonNfaToNfa(enfa);
             var newTransitions = new Dictionary<List<string>, List<KeyValuePair<string, List<string>>>>();
             var newStates = new List<List<string>>();
             newStates.Add(new List<string>() { nfa.InitialState });
@@ -69,7 +70,11 @@ namespace FiniteAutomatonConverter.Services
                         //if input already exists, add found states
                         if (currentStateTransitions.Any(x => x.Key == kvp.Key))
                         {
-                            currentStateTransitions.FirstOrDefault(x => x.Key == kvp.Key).Value.AddRange(kvp.Value.Where(x => !currentStateTransitions.FirstOrDefault(x => x.Key == kvp.Key).Value.Contains(x)));
+                            currentStateTransitions
+                            .FirstOrDefault(x => x.Key == kvp.Key).Value
+                            .AddRange(kvp.Value.Where(x => !currentStateTransitions
+                            .FirstOrDefault(x => x.Key == kvp.Key).Value
+                            .Contains(x)));
                         }
                         //else add record for the newly found input
                         else
@@ -140,8 +145,9 @@ namespace FiniteAutomatonConverter.Services
 
         }
 
-        public async Task<Automaton> MinimizeDfa(Automaton dfa)
+        public async Task<Automaton> MinimizeDfa(Automaton enfa)
         {
+            var dfa = await ConvertNfaToDfa(await ConvertEpsilonNfaToNfa(enfa));
             //removing non reachable states
             var nonReachableStates = dfa.States.Select(x => x.Key).ToList();
             nonReachableStates.Remove(dfa.InitialState);
@@ -166,7 +172,7 @@ namespace FiniteAutomatonConverter.Services
                 dfa.States.Add(newEquivalentStateValue, transitions);
 
                 //replace equivalent states with the new state
-                foreach(var state in dfa.States)
+                foreach (var state in dfa.States)
                 {
                     foreach (var t in state.Value.ToList())
                     {
@@ -177,6 +183,13 @@ namespace FiniteAutomatonConverter.Services
                         }
                     }
                 }
+                if (equivalentStates.Contains(dfa.InitialState))
+                    dfa.InitialState = newEquivalentStateValue;
+                dfa.FinalStates.ForEach(x =>
+                {
+                    if (equivalentStates.Contains(x))
+                        x = newEquivalentStateValue;
+                });
 
             }
             return dfa;
@@ -200,26 +213,32 @@ namespace FiniteAutomatonConverter.Services
                 }
                 if (eqStates.Count > 1)
                 {
-                    if (await AreStatesFromTheSameGroup(eqStates,finalStates))
-                    { 
-                        return eqStates;
-                    }
+                    var groupedEqStates = await GetGroupedStates(finalStates, eqStates);
+                    if (groupedEqStates.Count > 0)
+                        return groupedEqStates[0];
                 }
             }
             return null;
         }
-        public async Task<bool> AreStatesFromTheSameGroup(List<string> finalStates, List<string> equalStates)
+        public async Task<List<List<string>>> GetGroupedStates(List<string> finalStates, List<string> equalStates)
         {
-            bool isFirstOneFinal = finalStates.Any(x => x == equalStates[0]);
+            var fromFinal = new List<string>();
+            var notFromFinal = new List<string>();
+            equalStates.ForEach(x =>
+            {
+                if (finalStates.Contains(x))
+                    fromFinal.Add(x);
+                else
+                    notFromFinal.Add(x);
+            });
+            var result = new List<List<string>>();
+            if (fromFinal.Count > 1)
+                result.Add(fromFinal);
 
-            if(equalStates.Any(x=> finalStates.Contains(x) != isFirstOneFinal))
-            {
-                return false;
-            }
-            else
-            {
-                return true;
-            }
+            if (notFromFinal.Count > 1)
+                result.Add(notFromFinal);
+
+            return result;
         }
 
     }

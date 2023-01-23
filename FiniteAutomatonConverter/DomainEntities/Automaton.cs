@@ -55,7 +55,12 @@ namespace FiniteAutomatonConverter.DomainEntities
             epsilonReachableStates.Add(stateValue);
 
             if (epsilonReachableStates.Intersect(FinalStates).Any())
-                FinalStates.Add(stateValue);
+            {
+                if (!FinalStates.Contains(stateValue))
+                {
+                    FinalStates.Add(stateValue);
+                }
+            }
 
             return epsilonReachableStates;
         }
