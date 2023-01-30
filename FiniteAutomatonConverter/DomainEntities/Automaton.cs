@@ -44,13 +44,12 @@ namespace FiniteAutomatonConverter.DomainEntities
 
                 GetStatesReachableByInput(currentState, Constants.Epsilon).ForEach(x =>
                 {
-                    if(!(epsilonReachableStates.Contains(x) || x == stateValue))
+                    if (!(epsilonReachableStates.Contains(x) || x == stateValue))
                     {
                         epsilonReachableStates.Add(x);
                         epsilonReachableStatesProcessor.Enqueue(x);
                     }
                 });
-                
             }
             epsilonReachableStates.Add(stateValue);
 
@@ -94,6 +93,80 @@ namespace FiniteAutomatonConverter.DomainEntities
             }
 
             return states;
+        }
+        public List<string> GetFirstEquivalentStateOccurence()
+        {
+            foreach (var state in this.States)
+            {
+                var eqStates = new List<string>();
+                eqStates.Add(state.Key);
+                foreach (var sub in this.States)
+                {
+                    if (state.Key != sub.Key)
+                    {
+                        if (Enumerable.SequenceEqual(sub.Value.OrderBy(x => x.Key), state.Value.OrderBy(x => x.Key)))
+                        {
+                            eqStates.Add(sub.Key);
+                        }
+                    }
+                }
+                if (eqStates.Count > 1)
+                {
+                    var groupedEqStates = GetGroupedStates(this.FinalStates, eqStates);
+                    if (groupedEqStates.Count > 0)
+                        return groupedEqStates[0];
+                }
+            }
+            return null;
+        }
+        public List<List<string>> GetGroupedStates(List<string> finalStates, List<string> equalStates)
+        {
+            var fromFinal = new List<string>();
+            var notFromFinal = new List<string>();
+            equalStates.ForEach(x =>
+            {
+                if (finalStates.Contains(x))
+                    fromFinal.Add(x);
+                else
+                    notFromFinal.Add(x);
+            });
+            var result = new List<List<string>>();
+            if (fromFinal.Count > 1)
+                result.Add(fromFinal);
+
+            if (notFromFinal.Count > 1)
+                result.Add(notFromFinal);
+
+            return result;
+        }
+
+        public void ManageDeadStateOnDfaCreation()
+        {
+            foreach (var state in this.States)
+            {
+                var unusedCharacters = this.Alphabet.Where(x => state.Value.Where(y => y.Key == x).Count() < 1).ToList();
+                unusedCharacters.Remove(Constants.Epsilon);
+                unusedCharacters.ForEach(x =>
+                {
+                    state.Value.Add(new KeyValuePair<string, string>(x, Constants.DeadState));
+                });
+            }
+
+            if (this.States.Any(x => x.Value.Any(y => y.Value == Constants.DeadState)))
+            {
+                var tr = new List<KeyValuePair<string, string>>();
+                var errAlphabet = this.Alphabet;
+                errAlphabet.Remove(Constants.Epsilon);
+                tr.Add(new KeyValuePair<string, string>(String.Join(",", errAlphabet), Constants.DeadState));
+                this.States.Add(Constants.DeadState, tr);
+            }
+        }
+        public Dictionary<string,List<string>> GetStateTransitionsGroupedByInputByName(string stateName)
+        {
+            return this.States[stateName]
+                    .GroupBy(x => x.Key)
+                    .ToDictionary(x => x.Key, x => x.Select(kvp => kvp.Value)
+                    .ToList());
         }
     }
 }

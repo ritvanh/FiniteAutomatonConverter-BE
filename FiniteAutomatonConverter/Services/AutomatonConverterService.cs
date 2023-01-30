@@ -38,6 +38,7 @@ namespace FiniteAutomatonConverter.Services
                 newTransitions.Add(state.Key, currentStateTransitionList.Distinct().ToList());
             }
             enfa.States = newTransitions;
+            enfa.Alphabet.Remove(Constants.Epsilon);
             return enfa;
         }
 
@@ -59,10 +60,7 @@ namespace FiniteAutomatonConverter.Services
                 currentState.ForEach(x =>
                 {
                     //grouping transitions by input to form lists on same input
-                    var groupedTransitions = nfa.States[x]
-                    .GroupBy(x => x.Key)
-                    .ToDictionary(x => x.Key, x => x.Select(kvp => kvp.Value)
-                    .ToList());
+                    var groupedTransitions = nfa.GetStateTransitionsGroupedByInputByName(x);
 
                     //adding them to current state transitions
                     foreach (var kvp in groupedTransitions)
@@ -97,54 +95,34 @@ namespace FiniteAutomatonConverter.Services
                 });
             }
 
-            var dfaStates = new List<string>();
-            var dfaFinalStates = new List<string>();
+            var dfa = new Automaton()
+            {
+                FinalStates = new List<string>(),
+                States = new Dictionary<string, List<KeyValuePair<string, string>>>(),
+                Alphabet = nfa.Alphabet,
+                InitialState = nfa.InitialState
+            };
             newStates.ForEach(x =>
             {
-                dfaStates.Add(string.Join(",", x));
                 if (x.Intersect(nfa.FinalStates).Any())
-                    dfaFinalStates.Add(string.Join(",", x));
+                    dfa.FinalStates.Add(MergeStates(x));
             });
-            var dfaTransitions = new Dictionary<string, List<KeyValuePair<string, string>>>();
             foreach (var state in newTransitions)
             {
                 var currentTransitions = new List<KeyValuePair<string, string>>();
                 state.Value.ForEach(x =>
                 {
-                    currentTransitions.Add(new KeyValuePair<string, string>(x.Key, string.Join(",", x.Value)));
+                    currentTransitions.Add(new KeyValuePair<string, string>(x.Key, MergeStates(x.Value)));
                 });
-                dfaTransitions.Add(string.Join(",", state.Key), currentTransitions);
+                dfa.States.Add(MergeStates(state.Key), currentTransitions);
             }
 
-            foreach (var state in dfaTransitions)
-            {
-                var unusedCharacters = nfa.Alphabet.Where(x => state.Value.Where(y => y.Key == x).Count() < 1).ToList();
-                unusedCharacters.Remove(Constants.Epsilon);
-                unusedCharacters.ForEach(x =>
-                {
-                    state.Value.Add(new KeyValuePair<string, string>(x, Constants.DeadState));
-                });
-            }
+            dfa.ManageDeadStateOnDfaCreation();
 
-            if (dfaTransitions.Any(x => x.Value.Any(y => y.Value == Constants.DeadState)))
-            {
-                var tr = new List<KeyValuePair<string, string>>();
-                var errAlphabet = nfa.Alphabet;
-                errAlphabet.Remove(Constants.Epsilon);
-                tr.Add(new KeyValuePair<string, string>(String.Join(",", errAlphabet), Constants.DeadState));
-                dfaTransitions.Add(Constants.DeadState, tr);
-            }
-
-            return new Automaton()
-            {
-                Alphabet = nfa.Alphabet,
-                InitialState = nfa.InitialState,
-                FinalStates = dfaFinalStates,
-                States = dfaTransitions
-            };
+            return dfa; 
 
         }
-
+        
         public async Task<Automaton> MinimizeDfa(Automaton enfa)
         {
             var dfa = await ConvertNfaToDfa(await ConvertEpsilonNfaToNfa(enfa));
@@ -160,11 +138,11 @@ namespace FiniteAutomatonConverter.Services
             });
             
             //while there are equivalent states
-            while (await GetFirstEquivalentStateOccurence(dfa.States,dfa.FinalStates) != null)
+            while (dfa.GetFirstEquivalentStateOccurence() != null)
             {
-                var equivalentStates = await GetFirstEquivalentStateOccurence(dfa.States,dfa.FinalStates);
+                var equivalentStates = dfa.GetFirstEquivalentStateOccurence();
 
-                var newEquivalentStateValue = string.Join(",", equivalentStates);
+                var newEquivalentStateValue = MergeStates(equivalentStates);
                 var transitions = dfa.States[equivalentStates[0]];
                 //remove old states
                 equivalentStates.ForEach(x => dfa.States.Remove(x));
@@ -183,63 +161,21 @@ namespace FiniteAutomatonConverter.Services
                         }
                     }
                 }
+
                 if (equivalentStates.Contains(dfa.InitialState))
                     dfa.InitialState = newEquivalentStateValue;
+
                 dfa.FinalStates.ForEach(x =>
                 {
                     if (equivalentStates.Contains(x))
                         x = newEquivalentStateValue;
                 });
+                dfa.FinalStates = dfa.FinalStates.Distinct().ToList();
 
             }
             return dfa;
         }
-
-        public async Task<List<string>> GetFirstEquivalentStateOccurence(Dictionary<string,List<KeyValuePair<string,string>>> states,List<string> finalStates)
-        { 
-            foreach(var state in states)
-            {
-                var eqStates = new List<string>();
-                eqStates.Add(state.Key);
-                foreach (var sub in states)
-                {
-                    if (state.Key != sub.Key)
-                    {
-                        if(Enumerable.SequenceEqual(sub.Value.OrderBy(x=>x.Key),state.Value.OrderBy(x=>x.Key)))
-                        {
-                            eqStates.Add(sub.Key);
-                        }
-                    }
-                }
-                if (eqStates.Count > 1)
-                {
-                    var groupedEqStates = await GetGroupedStates(finalStates, eqStates);
-                    if (groupedEqStates.Count > 0)
-                        return groupedEqStates[0];
-                }
-            }
-            return null;
-        }
-        public async Task<List<List<string>>> GetGroupedStates(List<string> finalStates, List<string> equalStates)
-        {
-            var fromFinal = new List<string>();
-            var notFromFinal = new List<string>();
-            equalStates.ForEach(x =>
-            {
-                if (finalStates.Contains(x))
-                    fromFinal.Add(x);
-                else
-                    notFromFinal.Add(x);
-            });
-            var result = new List<List<string>>();
-            if (fromFinal.Count > 1)
-                result.Add(fromFinal);
-
-            if (notFromFinal.Count > 1)
-                result.Add(notFromFinal);
-
-            return result;
-        }
+        public string MergeStates(List<string> states) => String.Join(",", states);
 
     }
 }
